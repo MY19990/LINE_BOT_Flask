@@ -11,7 +11,7 @@ from trello import TrelloClient, Unauthorized
 # .envを読み込む
 from dotenv import load_dotenv
 load_dotenv()
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from get_weather_img import get_weather, get_img_url, del_up_img
 from current_space_info import iss_info, get_apod_info, astronomy_event
 
@@ -53,20 +53,29 @@ def callback() -> str:
         app.logger.warn("Invalid Signature.")
         
 ###-----------------------------------------------------------------------
+### on_postback関数でユーザーに天気情報のImageを送信するための関数
+def send_weather_img(info_type, event):            
+    # 天気グラフを作成 - /media/weather.pngに保存
+    get_weather(loc=app.config['skcs'], info_type=info_type)
+    # weather.pngをgyazoにアップロードしてユーザーに送信してアップした内容を削除
+    upload_url, image_id = get_img_url(info_type=info_type)
+    line_api.reply_message(event.reply_token, 
+                            [ImageSendMessage(original_content_url=upload_url, preview_image_url=upload_url),
+                            TextSendMessage(text=astronomy_event())])
+    del_up_img(image_id=image_id)
+
+### サーボモーターを制御する関数
+def degree(degree):
+    SERVO_PIN = 18
+    GPIO.setup(SERVO_PIN, GPIO.OUT)
+    servo = GPIO.PWM(SERVO_PIN, 50)
+    duty_cycle = 2.5 + (12.0 - 2.5) / 180 * (degree + 90)
+    duty_cycle = round(duty_cycle, 2)
+    servo.ChangeDutyCycle(duty_cycle)
+###-----------------------------------------------------------------------
 
 @handler.add(PostbackEvent)
 def on_postback(event):
-    ### on_postback関数でユーザーに天気情報のImageを送信するための関数
-    def send_weather_img(info_type, event):            
-        # 天気グラフを作成 - /media/weather.pngに保存
-        get_weather(loc=app.config['skcs'], info_type=info_type)
-        # weather.pngをgyazoにアップロードしてユーザーに送信してアップした内容を削除
-        upload_url, image_id = get_img_url(info_type=info_type)
-        line_api.reply_message(event.reply_token, 
-                               [ImageSendMessage(original_content_url=upload_url, preview_image_url=upload_url),
-                               TextSendMessage(text=astronomy_event())])
-        del_up_img(image_id=image_id)
-    #------------------------------------------------
     user_id = event.source.user_id
     postback_msg = event.postback.data
     if postback_msg == "現在の天気・今日の天文イベント":
@@ -86,13 +95,10 @@ def message_text(event):
         user_id = event.source.user_id
         ### 鍵の開閉時
         if user_message == '🔑🔓':
-            degree = 90
-            duty_cycle = 2.5 + (12.0 - 2.5) / 180 * (degree + 90)
-            duty_cycle = round(duty_cycle, 2)
-            servo.ChangeDutyCycle(duty_cycle)
-          
+            degree(0)
             line_api.reply_message(event.reply_token,TextSendMessage(text='OPEN 🔑'))
         elif user_message == '🔒':
+            degree(90)
             line_api.reply_message(event.reply_token,TextSendMessage(text='LOCK 🔒'))
         #-----------------------------------------------------------------------
         ### 天気情報の種類のボタンを送信
@@ -151,28 +157,3 @@ if __name__ == "__main__":
     arg_parser.add_argument('-d', '--debug', default=False, help='debug')
     options = arg_parser.parse_args()
     app.run(debug=options.debug, port=options.port)
-
-
-##### 開閉プログラム #####
-# # サーボモータを回す関数の登録
-# SERVO_PIN = 18
-# SERVO_OPEN_STATE = YYY（開錠状態）
-# SERVO_CLOSE_STATE = ZZZ（z施錠状態）
-
-# def KeyOpener():
-#     GPIO.setmode(GPIO.BCM)
-#     GPIO.setup(SERVO_PIN, GPIO.OUT)
-#     servo = GPIO.PWM(SERVO_PIN, 50)
-#     servo.start(0.0)
-#     servo.ChangeDutyCycle(SERVO_OPEN_STATE)
-#     time.sleep(1.0)
-#     GPIO.cleanup()
-
-# def KeyCloser():
-#     GPIO.setmode(GPIO.BCM)
-#     GPIO.setup(SERVO_PIN, GPIO.OUT)
-#     servo = GPIO.PWM(SERVO_PIN, 50)
-#     servo.start(0.0)
-#     servo.ChangeDutyCycle(SERVO_CLOSE_STATE)
-#     time.sleep(1.0)
-#     GPIO.cleanup()
