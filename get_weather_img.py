@@ -224,7 +224,5 @@ def create_graph(tenki_data_list, skcs_name):
 # print(get_weather(loc=user['loc'], info_type=user['info_type']))
 
 if __name__ == '__main__':
-    # get_weather(loc="町田市", info_type="hourly")
-    # get_weather(loc="町田市", info_type="daily")
     # upload_url, image_id = get_img_url(info_type="hourly")
     pass
