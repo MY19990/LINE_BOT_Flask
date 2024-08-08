@@ -86,6 +86,11 @@ def message_text(event):
         user_id = event.source.user_id
         ### 鍵の開閉時
         if user_message == '🔑🔓':
+            degree = 90
+            duty_cycle = 2.5 + (12.0 - 2.5) / 180 * (degree + 90)
+            duty_cycle = round(duty_cycle, 2)
+            servo.ChangeDutyCycle(duty_cycle)
+          
             line_api.reply_message(event.reply_token,TextSendMessage(text='OPEN 🔑'))
         elif user_message == '🔒':
             line_api.reply_message(event.reply_token,TextSendMessage(text='LOCK 🔒'))
